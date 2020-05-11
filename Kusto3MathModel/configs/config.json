@@ -1,0 +1,7 @@
+{
+    "sender.ip": "127.0.0.5",
+    "sender.port": 1002,
+    "receiver.ip": "127.0.0.5",
+    "receiver.port": 1003
+
+}
