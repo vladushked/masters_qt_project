@@ -1,1 +1,4 @@
 build-*
+.catkin_workspace*
+build/*
+devel/*
