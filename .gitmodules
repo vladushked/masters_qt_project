@@ -1,6 +1,0 @@
-[submodule "sauvc"]
-	path = sauvc
-	url = git@github.com:vladushked/sauvc.git
-[submodule "AUV-ROV_simple_simulator"]
-	path = AUV-ROV_simple_simulator
-	url = git@github.com:vladushked/AUV-ROV_simple_simulator.git
