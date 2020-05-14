@@ -36,6 +36,7 @@ class SU_ROV : public QObject
 public:
     explicit SU_ROV(QObject *parent = nullptr);
     virtual ~SU_ROV() {};
+    QTimer timer;
 
 public slots:
     void tick();
@@ -44,7 +45,6 @@ private:
     Qkx_coeffs * K_Protocol;
     x_protocol * X_Protocol;
 
-    QTimer timer;
     float timer_period; //период таймера
 
     void getDataFromModel();

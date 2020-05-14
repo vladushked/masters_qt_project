@@ -5,13 +5,31 @@
 #include <QWidget>
 #include <QHostAddress>
 #include <QUdpSocket>
+#include <QNetworkDatagram>
 #include "ui_senderwidget.h"
 #include "su_rov.h"
 
 #include <QVBoxLayout>
 #include <QWebEngineView>
 
+struct ToRos {
+    float linearVelosityX;
+    float linearVelosityY;
+    float linearVelosityZ;
+    float angularVelosityX;
+    float angularVelosityY;
+    float angularVelosityZ;
+};
 
+struct FromRos {
+    bool isExist;
+    float x_start;
+    float y_start;;
+    float x_end;
+    float y_end;
+    float x_center;
+    float y_center;
+};
 
 class SenderWidget : public QWidget, Ui::SenderWidget {
     Q_OBJECT
@@ -20,13 +38,18 @@ public:
     ~SenderWidget(){};
     SU_ROV su;
 
-private slots:
-
 private:
-    QUdpSocket *udp;//указатель на объект сокета
+    bool connectionEstablished;
+    QUdpSocket *qtSenderUdpSocket;
+    QUdpSocket *qtReceiverUdpSocket;
     QString PATH;//путь к файлу (прошлое занятие)
-    QHostAddress senderIP, receiverIP;//переменные для работы с IP-адресами
-    int senderPort, receiverPort;//номера портов отправителя и получателя
-    int sended; //переменная для хранения количества отправленных байт
+    QHostAddress QtSenderIP, QtReceiverIP, RosSenderIP, RosReceiverIP;//переменные для работы с IP-адресами
+    int QtSenderPort, QtReceiverPort, RosSenderPort, RosReceiverPort;//номера портов отправителя и получателя
+    ToRos messageToRos;
+    FromRos messageFromRos;
+
+private slots:
+    void send();
+    void receive();
 };
 #endif // SENDERWIDGET_H

@@ -21,20 +21,59 @@ SenderWidget::SenderWidget(QWidget *parent) : QWidget(parent) {
         configFile.close();
         //создадим JSON-объект, в который считаем содержимое jsonDoc
         QJsonObject jsonData = jsonDoc.object();
-        //считаем из объекта IP адрес и порт отправителя файла:
-        senderIP.setAddress(jsonData.value("sender.ip").toString());
-        senderPort = jsonData.value("sender.port").toInt();
-        //считаем IP адрес и порт получателя файла:
-        receiverIP.setAddress(jsonData.value("receiver.ip").toString());
-        receiverPort=jsonData.value("receiver.port").toInt();
+        //qt sender ip, port:
+        QtSenderIP.setAddress(jsonData.value("qt_sender.ip").toString());
+        QtSenderPort = jsonData.value("qt_sender.port").toInt();
+        //qt receiver ip, port:
+        QtReceiverIP.setAddress(jsonData.value("qt_receiver.ip").toString());
+        QtReceiverPort=jsonData.value("qt_receiver.port").toInt();
+        //ros sender ip, port:
+        RosSenderIP.setAddress(jsonData.value("ros_sender.ip").toString());
+        RosSenderPort = jsonData.value("ros_sender.port").toInt();
+        //ros receiver ip, port:
+        RosReceiverIP.setAddress(jsonData.value("ros_receiver.ip").toString());
+        RosReceiverPort=jsonData.value("ros_receiver.port").toInt();
         //выведем полученные значения в окно приложения
-        lblSenderIPport->setText(senderIP.toString()+":"+QString::number(senderPort));
-        lblReceiverIPport->setText(receiverIP.toString()+":"+QString::number(receiverPort));
+        lblQtSenderIPport->setText(QtSenderIP.toString()+":"+QString::number(QtSenderPort));
+        lblQtReceiverIPport->setText(QtReceiverIP.toString()+":"+QString::number(QtReceiverPort));
+        lblROSSenderIPport->setText(RosSenderIP.toString()+":"+QString::number(RosSenderPort));
+        lblROSReceiverIPport->setText(RosReceiverIP.toString()+":"+QString::number(RosReceiverPort));
     }
     else {
         qDebug()<<"can't open config.file";
     }
 
-    //web widget
-    widget->load(QUrl(QStringLiteral("https://www.qt.io")));
+    // web widget
+    widget->load(QUrl(QStringLiteral("http://localhost:8080/stream_viewer?topic=/dnn/image")));
+    // sockets
+    qtSenderUdpSocket = new QUdpSocket();
+    qtReceiverUdpSocket = new QUdpSocket();
+    qtSenderUdpSocket->bind(QtSenderIP, QtSenderPort);
+    qtReceiverUdpSocket->bind(QtReceiverIP, QtReceiverPort);
+    // signals
+    connect(qtReceiverUdpSocket, SIGNAL(readyRead()), this, SLOT(socketReceived()));
+    connect(&su.timer, SIGNAL(timeout()), this, SLOT(send()));
+    connectionEstablished = false;
 }
+
+void SenderWidget::send()
+{
+    QByteArray baDatagram;
+    qtSenderUdpSocket->writeDatagram((char*)&messageToRos, sizeof (messageToRos), RosReceiverIP, RosReceiverPort);
+}
+
+void SenderWidget::receive()
+{
+    while (qtReceiverUdpSocket->hasPendingDatagrams()) {
+        qtReceiverUdpSocket->readDatagram((char*)&messageFromRos, sizeof (messageFromRos));
+
+    }
+
+    if (!connectionEstablished) {
+        connectionEstablished = true;
+        qDebug() << "Connection established, receiving done";
+        txtBrFile->setText("Connection established, receiving done");
+    }
+}
+
+
