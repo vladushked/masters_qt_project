@@ -45,15 +45,44 @@ SenderWidget::SenderWidget(QWidget *parent) : QWidget(parent) {
 
     // web widget
     widget->load(QUrl(QStringLiteral("http://localhost:8080/stream_viewer?topic=/dnn/image")));
+
     // sockets
     qtSenderUdpSocket = new QUdpSocket();
     qtReceiverUdpSocket = new QUdpSocket();
     qtSenderUdpSocket->bind(QtSenderIP, QtSenderPort);
     qtReceiverUdpSocket->bind(QtReceiverIP, QtReceiverPort);
-    // signals
     connect(qtReceiverUdpSocket, SIGNAL(readyRead()), this, SLOT(socketReceived()));
     connect(&su.timer, SIGNAL(timeout()), this, SLOT(send()));
     connectionEstablished = false;
+
+    // state machine
+    connect(startButton, SIGNAL(clicked()), SIGNAL(startPressed()));
+    waitForCommand = new QState();
+    searchGate = new QState();
+    swimToGate = new QState();
+    centering = new QState();
+    finish = new QFinalState();
+    // state machine transitions
+    waitForCommand->addTransition(this, SIGNAL(startPressed()), searchGate);
+    searchGate->addTransition(this, SIGNAL(gateFinded()), swimToGate);
+    swimToGate->addTransition(this, SIGNAL(gateFinded()), centering);
+    centering->addTransition(this, SIGNAL(centeringDone()), finish);
+    // connnect some signals
+    connect(&stateMachine, SIGNAL(finished()), SLOT(finishMission()));
+    // set text for each state
+    waitForCommand->assignProperty(this, "state", "Waiting for command...");
+    searchGate->assignProperty(this, "state", "Searching for gate...");
+    swimToGate->assignProperty(this, "state", "Gate finded.\nSwimming to gate...");
+    centering->assignProperty(this, "state", "Centering...");
+    // add states to state machine
+    stateMachine.addState(waitForCommand);
+    stateMachine.addState(searchGate);
+    stateMachine.addState(swimToGate);
+    stateMachine.addState(centering);
+    stateMachine.addState(finish);
+    // set initial state
+    stateMachine.setInitialState(waitForCommand);
+    stateMachine.start();
 }
 
 void SenderWidget::send()
@@ -66,7 +95,6 @@ void SenderWidget::receive()
 {
     while (qtReceiverUdpSocket->hasPendingDatagrams()) {
         qtReceiverUdpSocket->readDatagram((char*)&messageFromRos, sizeof (messageFromRos));
-
     }
 
     if (!connectionEstablished) {
@@ -74,6 +102,13 @@ void SenderWidget::receive()
         qDebug() << "Connection established, receiving done";
         txtBrFile->setText("Connection established, receiving done");
     }
+}
+
+void SenderWidget::finishMission()
+{
+    txtBrFile->setText("Centering done. Mission complete!");
+    stateMachine.stop();
+
 }
 
 

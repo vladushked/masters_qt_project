@@ -12,44 +12,66 @@
 #include <QVBoxLayout>
 #include <QWebEngineView>
 
+#include <QStateMachine>
+#include <QFinalState>
+
 struct ToRos {
-    float linearVelosityX;
-    float linearVelosityY;
-    float linearVelosityZ;
-    float angularVelosityX;
-    float angularVelosityY;
-    float angularVelosityZ;
+    float linearVelosityX = 0;
+    float linearVelosityY = 0;
+    float linearVelosityZ = 0;
+    float angularVelosityX = 0;
+    float angularVelosityY = 0;
+    float angularVelosityZ = 0;
 };
 
 struct FromRos {
-    bool isExist;
-    float x_start;
-    float y_start;;
-    float x_end;
-    float y_end;
-    float x_center;
-    float y_center;
+    bool isExist = false;
+    float x_start = 0;
+    float y_start = 0;
+    float x_end = 0;
+    float y_end = 0;
+    float x_center = 0;
+    float y_center = 0;
 };
 
 class SenderWidget : public QWidget, Ui::SenderWidget {
     Q_OBJECT
+    Q_PROPERTY(QString state READ getState WRITE setState NOTIFY stateChanged)
+
+signals:
+    void startPressed();
+    void stateChanged();
+    void gateFinded();
+    void centeringDone();
+
 public:
     explicit SenderWidget(QWidget *parent = 0);
     ~SenderWidget(){};
     SU_ROV su;
+    QString getState(){return state;}
+    void setState(QString st){
+        state = st;
+        txtBrFile->setText(st);
+    }
 
 private:
+    // udp
     bool connectionEstablished;
     QUdpSocket *qtSenderUdpSocket;
     QUdpSocket *qtReceiverUdpSocket;
-    QString PATH;//путь к файлу (прошлое занятие)
     QHostAddress QtSenderIP, QtReceiverIP, RosSenderIP, RosReceiverIP;//переменные для работы с IP-адресами
     int QtSenderPort, QtReceiverPort, RosSenderPort, RosReceiverPort;//номера портов отправителя и получателя
     ToRos messageToRos;
     FromRos messageFromRos;
+    // state machine
+    QStateMachine stateMachine;
+    QState *waitForCommand, *searchGate, *swimToGate, *centering;
+    QFinalState *finish;
+    QString state;
 
 private slots:
     void send();
     void receive();
+    void finishMission();
 };
 #endif // SENDERWIDGET_H
