@@ -31,13 +31,13 @@ SenderWidget::SenderWidget(QWidget *parent) : QWidget(parent) {
         RosSenderIP.setAddress(jsonData.value("ros_sender.ip").toString());
         RosSenderPort = jsonData.value("ros_sender.port").toInt();
         //ros receiver ip, port:
-        RosReceiverIP.setAddress(jsonData.value("ros_receiver.ip").toString());
-        RosReceiverPort=jsonData.value("ros_receiver.port").toInt();
+        rosReceiverIP.setAddress(jsonData.value("ros_receiver.ip").toString());
+        rosReceiverPort=jsonData.value("ros_receiver.port").toInt();
         //выведем полученные значения в окно приложения
         lblQtSenderIPport->setText(QtSenderIP.toString()+":"+QString::number(QtSenderPort));
         lblQtReceiverIPport->setText(QtReceiverIP.toString()+":"+QString::number(QtReceiverPort));
         lblROSSenderIPport->setText(RosSenderIP.toString()+":"+QString::number(RosSenderPort));
-        lblROSReceiverIPport->setText(RosReceiverIP.toString()+":"+QString::number(RosReceiverPort));
+        lblROSReceiverIPport->setText(rosReceiverIP.toString()+":"+QString::number(rosReceiverPort));
     }
     else {
         qDebug()<<"can't open config.file";
@@ -51,7 +51,7 @@ SenderWidget::SenderWidget(QWidget *parent) : QWidget(parent) {
     qtReceiverUdpSocket = new QUdpSocket();
     qtSenderUdpSocket->bind(QtSenderIP, QtSenderPort);
     qtReceiverUdpSocket->bind(QtReceiverIP, QtReceiverPort);
-    connect(qtReceiverUdpSocket, SIGNAL(readyRead()), this, SLOT(socketReceived()));
+    connect(qtReceiverUdpSocket, SIGNAL(readyRead()), this, SLOT(receive()));
     connect(&su.timer, SIGNAL(timeout()), this, SLOT(send()));
     connectionEstablished = false;
 
@@ -88,7 +88,7 @@ SenderWidget::SenderWidget(QWidget *parent) : QWidget(parent) {
 void SenderWidget::send()
 {
     QByteArray baDatagram;
-    qtSenderUdpSocket->writeDatagram((char*)&messageToRos, sizeof (messageToRos), RosReceiverIP, RosReceiverPort);
+    qtSenderUdpSocket->writeDatagram((char*)&messageToRos, sizeof (messageToRos), rosReceiverIP, rosReceiverPort);
 }
 
 void SenderWidget::receive()
@@ -102,6 +102,7 @@ void SenderWidget::receive()
         qDebug() << "Connection established, receiving done";
         txtBrFile->setText("Connection established, receiving done");
     }
+    qDebug() << "Data received";
 }
 
 void SenderWidget::finishMission()

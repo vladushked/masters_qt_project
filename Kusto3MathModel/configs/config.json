@@ -1,7 +1,11 @@
 {
-    "sender.ip": "127.0.0.5",
-    "sender.port": 1002,
-    "receiver.ip": "127.0.0.5",
-    "receiver.port": 1003
+    "qt_sender.ip": "127.0.0.5",
+    "qt_sender.port": 1032,
+    "qt_receiver.ip": "127.0.0.5",
+    "qt_receiver.port": 1033,
+    "ros_sender.ip": "127.0.0.5",
+    "ros_sender.port": 1034,
+    "ros_receiver.ip": "127.0.0.5",
+    "ros_receiver.port": 1035
 
 }

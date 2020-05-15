@@ -59,8 +59,8 @@ private:
     bool connectionEstablished;
     QUdpSocket *qtSenderUdpSocket;
     QUdpSocket *qtReceiverUdpSocket;
-    QHostAddress QtSenderIP, QtReceiverIP, RosSenderIP, RosReceiverIP;//переменные для работы с IP-адресами
-    int QtSenderPort, QtReceiverPort, RosSenderPort, RosReceiverPort;//номера портов отправителя и получателя
+    QHostAddress QtSenderIP, QtReceiverIP, RosSenderIP, rosReceiverIP;//переменные для работы с IP-адресами
+    int QtSenderPort, QtReceiverPort, RosSenderPort, rosReceiverPort;//номера портов отправителя и получателя
     ToRos messageToRos;
     FromRos messageFromRos;
     // state machine
