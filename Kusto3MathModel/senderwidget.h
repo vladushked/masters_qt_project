@@ -1,4 +1,4 @@
-#ifndef SENDERWIDGET_H
+﻿#ifndef SENDERWIDGET_H
 #define SENDERWIDGET_H
 
 #include <QString>
@@ -14,6 +14,9 @@
 
 #include <QStateMachine>
 #include <QFinalState>
+
+extern QVector<double> K;
+extern double X[2000][2];
 
 struct ToRos {
     float linearVelosityX = 0;
@@ -42,6 +45,7 @@ signals:
     void startPressed();
     void stateChanged();
     void gateFinded();
+    void gateNotFound();
     void centeringDone();
 
 public:
@@ -51,7 +55,7 @@ public:
     QString getState(){return state;}
     void setState(QString st){
         state = st;
-        txtBrFile->setText(st);
+        txtBrFile->append(st);
     }
 
 private:
@@ -65,13 +69,17 @@ private:
     FromRos messageFromRos;
     // state machine
     QStateMachine stateMachine;
-    QState *waitForCommand, *searchGate, *swimToGate, *centering;
+    QState *waitForCommand, *search, *swim, *centering;
     QFinalState *finish;
     QString state;
 
 private slots:
     void send();
     void receive();
+
+    void searchForGate();
+    void swimToGate();
+    void centeringOnGate();
     void finishMission();
 };
 #endif // SENDERWIDGET_H

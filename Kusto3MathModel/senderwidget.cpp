@@ -58,26 +58,30 @@ SenderWidget::SenderWidget(QWidget *parent) : QWidget(parent) {
     // state machine
     connect(startButton, SIGNAL(clicked()), SIGNAL(startPressed()));
     waitForCommand = new QState();
-    searchGate = new QState();
-    swimToGate = new QState();
+    search = new QState();
+    swim = new QState();
     centering = new QState();
     finish = new QFinalState();
     // state machine transitions
-    waitForCommand->addTransition(this, SIGNAL(startPressed()), searchGate);
-    searchGate->addTransition(this, SIGNAL(gateFinded()), swimToGate);
-    swimToGate->addTransition(this, SIGNAL(gateFinded()), centering);
+    waitForCommand->addTransition(this, SIGNAL(startPressed()), search);
+    search->addTransition(this, SIGNAL(gateFinded()), swim);
+    search->addTransition(this, SIGNAL(gateNotFound()), waitForCommand);
+    swim->addTransition(this, SIGNAL(gateFinded()), centering);
     centering->addTransition(this, SIGNAL(centeringDone()), finish);
     // connnect some signals
+    connect(search, SIGNAL(entered()), this, SLOT(searchForGate()));
+    connect(swim, SIGNAL(entered()), this, SLOT(swimToGate()));
+    connect(centering, SIGNAL(entered()), this, SLOT(centeringOnGate()));
     connect(&stateMachine, SIGNAL(finished()), SLOT(finishMission()));
     // set text for each state
-    waitForCommand->assignProperty(this, "state", "Waiting for command...");
-    searchGate->assignProperty(this, "state", "Searching for gate...");
-    swimToGate->assignProperty(this, "state", "Gate finded.\nSwimming to gate...");
-    centering->assignProperty(this, "state", "Centering...");
+    waitForCommand->assignProperty(this, "state", "Ожидание команды");
+    search->assignProperty(this, "state", "Поиск ворот");
+    swim->assignProperty(this, "state", "Ворота найдены.\nДвижение к воротам");
+    centering->assignProperty(this, "state", "Центрирование");
     // add states to state machine
     stateMachine.addState(waitForCommand);
-    stateMachine.addState(searchGate);
-    stateMachine.addState(swimToGate);
+    stateMachine.addState(search);
+    stateMachine.addState(swim);
     stateMachine.addState(centering);
     stateMachine.addState(finish);
     // set initial state
@@ -103,6 +107,40 @@ void SenderWidget::receive()
         txtBrFile->setText("Connection established, receiving done");
     }
     qDebug() << "Data received";
+}
+
+void SenderWidget::searchForGate()
+{
+    K[44] = 0;
+    K[43] = 1;
+    K[41] = -1;
+    qWarning() << "SHIT";
+    /*
+    do {
+        if (X[42][0] >= -1){
+            K[41] = 1;
+        }
+        else if (X[42][0] >= 1) {
+            K[44] = 1;
+            K[43] = 0;
+            K[41] = 0;
+            qWarning() << "Gate not found";
+            messageFromRos.isExist = 1;
+            emit gateNotFound();
+        }
+    } while (!messageFromRos.isExist);
+    */
+
+}
+
+void SenderWidget::swimToGate()
+{
+
+}
+
+void SenderWidget::centeringOnGate()
+{
+
 }
 
 void SenderWidget::finishMission()
