@@ -67,19 +67,21 @@ private:
     int QtSenderPort, QtReceiverPort, RosSenderPort, rosReceiverPort;//номера портов отправителя и получателя
     ToRos messageToRos;
     FromRos messageFromRos;
+
     // state machine
     QStateMachine stateMachine;
     QState *waitForCommand, *search, *swim, *centering;
     QFinalState *finish;
     QString state;
+    QString gateDirection;
 
 private slots:
     void send();
     void receive();
-
     void searchForGate();
     void swimToGate();
     void centeringOnGate();
     void finishMission();
+    void searchingMetod();
 };
 #endif // SENDERWIDGET_H

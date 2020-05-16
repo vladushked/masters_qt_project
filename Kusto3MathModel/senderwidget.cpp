@@ -107,30 +107,17 @@ void SenderWidget::receive()
         txtBrFile->setText("Connection established, receiving done");
     }
     qDebug() << "Data received";
+
+    // TODO: метод для выдачи сигнала о нахождении ворот после 10 обнаружений
 }
 
 void SenderWidget::searchForGate()
 {
     K[44] = 0;
     K[43] = 1;
-    K[41] = -1;
-    qWarning() << "SHIT";
-    /*
-    do {
-        if (X[42][0] >= -1){
-            K[41] = 1;
-        }
-        else if (X[42][0] >= 1) {
-            K[44] = 1;
-            K[43] = 0;
-            K[41] = 0;
-            qWarning() << "Gate not found";
-            messageFromRos.isExist = 1;
-            emit gateNotFound();
-        }
-    } while (!messageFromRos.isExist);
-    */
-
+    K[41] = 0.5;
+    gateDirection = "right";
+    QTimer::singleShot(1, this, SLOT(searchingMetod()));
 }
 
 void SenderWidget::swimToGate()
@@ -148,6 +135,32 @@ void SenderWidget::finishMission()
     txtBrFile->setText("Centering done. Mission complete!");
     stateMachine.stop();
 
+}
+
+void SenderWidget::searchingMetod()
+{
+    qDebug() << "searchingMetod";
+    qDebug() << X[42][0];
+    if (gateDirection == "right") {
+        if (X[42][0] >= 1){
+            K[41] = -0.5;
+            gateDirection = "left";
+        }
+        QTimer::singleShot(1, this, SLOT(searchingMetod()));
+    }
+    else if (gateDirection == "left") {
+        if (X[42][0] <= -1) {
+            K[44] = 1;
+            K[43] = 0;
+            K[41] = 0;
+            gateDirection = "none";
+            qWarning() << "Gate not found";
+        }
+        QTimer::singleShot(1, this, SLOT(searchingMetod()));
+    }
+    else if (gateDirection == "none") {
+        emit gateNotFound();
+    }
 }
 
 
