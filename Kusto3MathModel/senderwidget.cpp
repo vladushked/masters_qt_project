@@ -55,6 +55,9 @@ SenderWidget::SenderWidget(QWidget *parent) : QWidget(parent) {
     connect(&su.timer, SIGNAL(timeout()), this, SLOT(send()));
     connectionEstablished = false;
 
+    gateFound = false;
+    gateDirection = "none";
+
     // state machine
     connect(startButton, SIGNAL(clicked()), SIGNAL(startPressed()));
     waitForCommand = new QState();
@@ -66,7 +69,7 @@ SenderWidget::SenderWidget(QWidget *parent) : QWidget(parent) {
     waitForCommand->addTransition(this, SIGNAL(startPressed()), search);
     search->addTransition(this, SIGNAL(gateFinded()), swim);
     search->addTransition(this, SIGNAL(gateNotFound()), waitForCommand);
-    swim->addTransition(this, SIGNAL(gateFinded()), centering);
+    swim->addTransition(this, SIGNAL(startCentering()), centering);
     centering->addTransition(this, SIGNAL(centeringDone()), finish);
     // connnect some signals
     connect(search, SIGNAL(entered()), this, SLOT(searchForGate()));
@@ -76,7 +79,7 @@ SenderWidget::SenderWidget(QWidget *parent) : QWidget(parent) {
     // set text for each state
     waitForCommand->assignProperty(this, "state", "Ожидание команды");
     search->assignProperty(this, "state", "Поиск ворот");
-    swim->assignProperty(this, "state", "Ворота найдены.\nДвижение к воротам");
+    swim->assignProperty(this, "state", "Ворота найдены.");
     centering->assignProperty(this, "state", "Центрирование");
     // add states to state machine
     stateMachine.addState(waitForCommand);
@@ -122,7 +125,13 @@ void SenderWidget::searchForGate()
 
 void SenderWidget::swimToGate()
 {
-
+    gateFound = true;
+    // set yaw = 0
+    txtBrFile->append("Обнуление курса.");
+    K[44] = 1;
+    K[43] = 0;
+    K[41] = 0;
+    checkYaw();
 }
 
 void SenderWidget::centeringOnGate()
@@ -139,28 +148,50 @@ void SenderWidget::finishMission()
 
 void SenderWidget::searchingMetod()
 {
-    qDebug() << "searchingMetod";
-    qDebug() << X[42][0];
-    if (gateDirection == "right") {
-        if (X[42][0] >= 1){
-            K[41] = -0.5;
-            gateDirection = "left";
+    if (!gateFound){
+        if (gateDirection == "right") {
+            if (X[42][0] >= 1){
+                K[41] = -0.5;
+                gateDirection = "left";
+            }
+            QTimer::singleShot(1, this, SLOT(searchingMetod()));
         }
-        QTimer::singleShot(1, this, SLOT(searchingMetod()));
-    }
-    else if (gateDirection == "left") {
-        if (X[42][0] <= -1) {
-            K[44] = 1;
-            K[43] = 0;
-            K[41] = 0;
-            gateDirection = "none";
-            qWarning() << "Gate not found";
+        else if (gateDirection == "left") {
+            if (X[42][0] <= -1) {
+                K[44] = 1;
+                K[43] = 0;
+                K[41] = 0;
+                gateDirection = "none";
+                qWarning() << "Gate not found";
+            }
+            QTimer::singleShot(1, this, SLOT(searchingMetod()));
         }
-        QTimer::singleShot(1, this, SLOT(searchingMetod()));
+        else if (gateDirection == "none") {
+            txtBrFile->append("Ворота не найдены.");
+            emit gateNotFound();
+        }
     }
-    else if (gateDirection == "none") {
-        emit gateNotFound();
+    if (X[42][0] <= -0.5)
+        emit gateFinded();
+}
+
+void SenderWidget::checkYaw()
+{
+    if (-0.01 > X[42][0] > 0.01) {
+        QTimer::singleShot(1, this, SLOT(checkYaw()));
     }
+    else {
+        gateFound = false;
+        swimmingMethod();
+    }
+
+}
+
+void SenderWidget::swimmingMethod()
+{
+    txtBrFile->append("Движение по лагу к воротам.");
+    qDebug() << "swimmingMethod. lag to gateDirection";
+    //lag to gateDirection
 }
 
 

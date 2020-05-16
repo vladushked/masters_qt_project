@@ -46,6 +46,7 @@ signals:
     void stateChanged();
     void gateFinded();
     void gateNotFound();
+    void startCentering();
     void centeringDone();
 
 public:
@@ -73,6 +74,7 @@ private:
     QState *waitForCommand, *search, *swim, *centering;
     QFinalState *finish;
     QString state;
+    bool gateFound;
     QString gateDirection;
 
 private slots:
@@ -83,5 +85,7 @@ private slots:
     void centeringOnGate();
     void finishMission();
     void searchingMetod();
+    void checkYaw();
+    void swimmingMethod();
 };
 #endif // SENDERWIDGET_H
