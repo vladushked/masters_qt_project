@@ -19,12 +19,12 @@ extern QVector<double> K;
 extern double X[2000][2];
 
 struct ToRos {
-    float linearVelosityX = 0;
+    float poseY = 0; // Глубина
+    float poseZ = 0; // Лаг
+    float angleYaw = 0; //
     float linearVelosityY = 0;
     float linearVelosityZ = 0;
-    float angularVelosityX = 0;
     float angularVelosityY = 0;
-    float angularVelosityZ = 0;
 };
 
 struct FromRos {
@@ -76,6 +76,16 @@ private:
     QString state;
     bool gateFound;
     QString gateDirection;
+
+    void updateSendValues();
+    void updateReceivedValues();
+
+    // initial values
+    //float initialX = 0.5; // марш
+    //float initialY = 2.0; // глубина
+    //float initialZ = 4.0; // лаг
+    //float initialRoll = 1.5708;
+    //float initialYaw = 1.5708;
 
 private slots:
     void send();

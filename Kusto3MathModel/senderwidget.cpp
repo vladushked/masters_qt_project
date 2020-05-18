@@ -92,8 +92,23 @@ SenderWidget::SenderWidget(QWidget *parent) : QWidget(parent) {
     stateMachine.start();
 }
 
+void SenderWidget::updateSendValues()
+{
+    messageToRos.poseY = 2.0; // глубина
+    messageToRos.poseZ = 4.0; // лаг
+    messageToRos.angleYaw = 1.5708 + X[42][0];
+    qDebug() << X[42][0];
+}
+
+void SenderWidget::updateReceivedValues()
+{
+    if (messageFromRos.isExist)
+        emit gateFinded();
+}
+
 void SenderWidget::send()
 {
+    updateSendValues();
     QByteArray baDatagram;
     qtSenderUdpSocket->writeDatagram((char*)&messageToRos, sizeof (messageToRos), rosReceiverIP, rosReceiverPort);
 }
@@ -107,9 +122,11 @@ void SenderWidget::receive()
     if (!connectionEstablished) {
         connectionEstablished = true;
         qDebug() << "Connection established, receiving done";
-        txtBrFile->setText("Connection established, receiving done");
+        txtBrFile->append("Connection established, receiving done");
     }
-    qDebug() << "Data received";
+    //qDebug() << "Data received";
+    updateReceivedValues();
+    // qDebug() << messageFromRos.isExist;
 
     // TODO: метод для выдачи сигнала о нахождении ворот после 10 обнаружений
 }
@@ -141,7 +158,7 @@ void SenderWidget::centeringOnGate()
 
 void SenderWidget::finishMission()
 {
-    txtBrFile->setText("Centering done. Mission complete!");
+    txtBrFile->append("Centering done. Mission complete!");
     stateMachine.stop();
 
 }
