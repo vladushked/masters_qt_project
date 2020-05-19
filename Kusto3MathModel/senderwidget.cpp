@@ -60,6 +60,7 @@ SenderWidget::SenderWidget(QWidget *parent) : QWidget(parent) {
 
     // state machine
     connect(startButton, SIGNAL(clicked()), SIGNAL(startPressed()));
+    connect(againButton, SIGNAL(clicked()), SIGNAL(againPressed()));
     waitForCommand = new QState();
     search = new QState();
     swim = new QState();
@@ -71,6 +72,9 @@ SenderWidget::SenderWidget(QWidget *parent) : QWidget(parent) {
     search->addTransition(this, SIGNAL(gateNotFound()), waitForCommand);
     swim->addTransition(this, SIGNAL(startCentering()), centering);
     centering->addTransition(this, SIGNAL(centeringDone()), finish);
+    search->addTransition(this, SIGNAL(againPressed()), waitForCommand);
+    swim->addTransition(this, SIGNAL(againPressed()), waitForCommand);
+    centering->addTransition(this, SIGNAL(againPressed()), waitForCommand);
     // connnect some signals
     connect(search, SIGNAL(entered()), this, SLOT(searchForGate()));
     connect(swim, SIGNAL(entered()), this, SLOT(swimToGate()));
@@ -94,10 +98,16 @@ SenderWidget::SenderWidget(QWidget *parent) : QWidget(parent) {
 
 void SenderWidget::updateSendValues()
 {
-    messageToRos.poseY = 2.0; // глубина
-    messageToRos.poseZ = 4.0; // лаг
     messageToRos.angleYaw = 1.5708 + X[42][0];
-    qDebug() << X[42][0];
+    messageToRos.angularVelosityY = X[50][0];
+    messageToRos.poseY = 2.0 + X[62][0]; // глубина
+    messageToRos.linearVelosityY = X[70][0];
+    messageToRos.poseZ = 4.0 + X[82][0]; // лаг
+    messageToRos.linearVelosityZ = X[90][0];
+
+    // qDebug() << messageToRos.angleYaw;
+    // qDebug() << messageToRos.poseY;
+    // qDebug() << messageToRos.poseZ;
 }
 
 void SenderWidget::updateReceivedValues()
@@ -124,8 +134,9 @@ void SenderWidget::receive()
         qDebug() << "Connection established, receiving done";
         txtBrFile->append("Connection established, receiving done");
     }
+
     //qDebug() << "Data received";
-    updateReceivedValues();
+    //updateReceivedValues();
     // qDebug() << messageFromRos.isExist;
 
     // TODO: метод для выдачи сигнала о нахождении ворот после 10 обнаружений
@@ -145,7 +156,7 @@ void SenderWidget::swimToGate()
     gateFound = true;
     // set yaw = 0
     txtBrFile->append("Обнуление курса.");
-    K[44] = 1;
+    K[44] = 3.5;
     K[43] = 0;
     K[41] = 0;
     checkYaw();
@@ -207,7 +218,10 @@ void SenderWidget::checkYaw()
 void SenderWidget::swimmingMethod()
 {
     txtBrFile->append("Движение по лагу к воротам.");
-    qDebug() << "swimmingMethod. lag to gateDirection";
+    K[44] = 0;
+    K[43] = 1;
+    K[41] = 5;
+    //qDebug() << "swimmingMethod. lag to gateDirection";
     //lag to gateDirection
 }
 

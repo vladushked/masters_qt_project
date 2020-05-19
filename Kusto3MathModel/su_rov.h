@@ -29,6 +29,7 @@ struct InitData {
     double max_depth;
 }; //struct InitData
 
+
 class SU_ROV : public QObject
 {
     Q_OBJECT
@@ -47,20 +48,31 @@ private:
 
     float timer_period; //период таймера
 
-    void getDataFromModel();
-    void yawControlChannel();
-    void pitchControlChannel();
-    void BFS_DRK(double Upsi, double Uteta, double Ugamma, double Ux);
+    void BFS_DRK_KUSTO_3(double Upsi, double Uy, double Uz);
     //метод, который ограничивает значение input по величине max
     float saturation(float input, float max);
     int sign(float input){
         return (input>=0) ? 1 : -1;
     }
+    void yawControlChannel();
+    void lagControlChannel();
+    void depthControlChannel();
+    // rov model init
+    void modelKusto3(const float Ulz, const float Ulp, const float Ugl, const float Ugp);
+    void rungeKusto3(const float Ulz, const float Ulp, const float Ugl, const float Ugp, const float dt);
+    void resetModel();
+
+    double Plz,Plp,Pgl,Pgp; //упоры движителей
+    double Pgl_y, Pgp_y, Plz_z, Plp_z; // проекции упоров
+
+    void getDataFromModel();
+    void pitchControlChannel();
+    //void BFS_DRK(double Upsi, double Uteta, double Ugamma, double Ux);
+    //метод, который ограничивает значение input по величине max
     // rov model init
     void model(const float Umvl,const float Umnl,const float Umvp,const float Umnp);
     void runge(const float Umvl,const float Umnl,
                const float Umvp,const float Umnp, const float dt=0.01);
-    void resetModel();
 
 
     double a[ANPA_MOD_CNT];
@@ -91,9 +103,8 @@ private:
 
     double Psi_gi, W_Psi_g, W_Gamma_g, W_Tetta_g;
 
-    double Plz,Plp,Pmpr,Pml; //упоры движителей
-    double Pmvp, Pmvl, Pmnp, Pmnl;
-    double Pmvp_x, Pmnl_x, Pmvl_x, Pmnp_x;
+    //double Pmvp, Pmvl, Pmnp, Pmnl;
+    // double Pmvp_x, Pmnl_x, Pmvl_x, Pmnp_x;
     double Ulz, Ulp, Umpr, Uml; //напряжения движителей
 
     double FloatageX, FloatageY, FloatageZ, Fdx, Fdy, Fdz, Fgx, Fgy, Fgz;

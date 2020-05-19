@@ -12,7 +12,7 @@ SU_ROV::SU_ROV(QObject *parent) : QObject(parent)
     resetModel();
     k_gamma = 0.3;
     m = 100;
-    delta_m = 2;
+    delta_m = 0;
     cv1[0] = 109; cv1[1] = 950; cv1[2] = 633;
     cv2[0] = 10.9; cv2[1] = 114; cv2[2] = 76;
     cw1[0] = 228.6; cw1[1] = 366; cw1[2] = 366; // kak v rabote Egorova
@@ -30,6 +30,262 @@ SU_ROV::SU_ROV(QObject *parent) : QObject(parent)
     max_depth=100;
 }
 
+void SU_ROV::tick()
+{
+    // задающие сигналы по каналам
+    X[41][0] = K[41];     // контур курса
+    X[61][0] = K[61];   // контур лага
+    X[81][0] = K[81];   // контур глубины
+
+    getDataFromModel();
+    //qDebug() << X[41][0];
+    yawControlChannel();
+    lagControlChannel();
+    depthControlChannel();
+    //BFS_DRK_KUSTO_3(X[48][0],0,0);
+    BFS_DRK_KUSTO_3(X[48][0],X[68][0],X[88][0]);
+    rungeKusto3(X[27][0], X[28][0], X[29][0], X[30][0], 0.01);
+
+}
+
+void SU_ROV::getDataFromModel()
+{
+    X[42][0] = Psi_g;       // курс
+    X[50][0] = W_Psi_g;     // угловая скорость по курсу
+    X[62][0] = y_global;
+    X[70][0] = vy_global;
+    X[82][0] = z_global;
+    X[90][0] = vz_global;
+    //qDebug() << Psi_g;
+    //qDebug() << W_Psi_g;
+    //qDebug() << y_global;
+    //qDebug() << vy_global;
+    //qDebug() << z_global;
+    //qDebug() << vz_global;
+}
+
+void SU_ROV::yawControlChannel()
+{
+    X[43][0] = X[41][0] - X[42][0];
+    X[44][0] = X[43][0] * K[44];
+    X[45][0] = X[50][0] * K[45];
+    X[46][0] = X[44][0] - X[45][0] + X[41][0] * K[43];
+    X[48][0] = X[46][0];
+    //qDebug() << X[48][0];
+}
+
+void SU_ROV::lagControlChannel()
+{
+    X[63][0] = X[61][0] - X[62][0];
+    X[64][0] = X[63][0] * K[64];
+    X[65][0] = X[60][0] * K[65];
+    X[66][0] = X[64][0] - X[65][0] + X[61][0] * K[63];
+    X[68][0] = X[66][0];
+}
+
+void SU_ROV::depthControlChannel()
+{
+    X[83][0] = X[81][0] - X[82][0];
+    X[84][0] = X[83][0] * K[84];
+    X[85][0] = X[80][0] * K[85];
+    X[86][0] = X[84][0] - X[85][0] + X[81][0] * K[83];
+    X[88][0] = X[86][0];
+}
+
+void SU_ROV::BFS_DRK_KUSTO_3(double Upsi, double Uy, double Uz)
+{
+    //ограничим входные задающие сигналы в БФС ДРК
+    X[11][0] = saturation(Upsi, K[11]);
+    X[12][0] = saturation(Uy, K[12]);
+    X[13][0] = saturation(Uz, K[13]);
+
+    X[23][0] = X[11][0] + X[13][0];
+    X[24][0] = X[13][0] - X[11][0];
+    X[25][0] = X[12][0];
+    X[26][0] = X[12][0];
+
+    X[27][0] = saturation(X[23][0], K[23])*K[27];
+    X[28][0] = saturation(X[24][0], K[24])*K[28];
+    X[29][0] = saturation(X[25][0], K[25])*K[29];
+    X[30][0] = saturation(X[26][0], K[26])*K[30];
+    //qDebug() << X[27][0];
+}
+
+float SU_ROV::saturation(float input, float max) {
+    if (fabs(input)>= max)
+        return (sign(input)*max);
+    else return input;
+}
+
+void SU_ROV::modelKusto3(const float Ulz, const float Ulp, const float Ugl, const float Ugp)
+{
+    //qDebug() << "modelKusto3";
+    double G,delta_f;
+
+    //модули упоров движителей
+    Plz = a[7];  // лаговый задний
+    Plp = a[8];  // лаговый передний
+    Pgl = a[9];  // глубина левый
+    Pgp = a[10]; // глубина правый
+
+    //проекции упоров движителей на продольную ось Y
+    Pgl_y = Pgl;
+    Pgp_y = Pgp;
+    //проекции упоров движителей на продольную ось Z
+    Plz_z = Plz;
+    Plp_z = Plp;
+
+    double g = 9.81;
+    G = m*g; //вес аппарата
+    delta_f = delta_m * g; //плавучесть (H)
+
+    Fdx = 0;
+    Fgx = -cv1[0] * a[1] * fabs(a[1]) - cv2[0] * a[1];
+    FloatageX = sin(a[6]) * delta_f;
+    //FloatageX = 0; //обнуление остаточной плавучести
+    da[1] = (1/(m + lambda[1][1])) * (Fdx + Fgx + FloatageX); //vx'
+
+    Fdy = Pgl_y + Pgp_y;
+    Fgy = -cv1[1] * a[2] * fabs(a[2]) - cv2[1] * a[2];
+    FloatageY = cos(a[6]) * cos(a[5]) * delta_f;
+    //FloatageY = 0; //обнуление остаточной плавучести
+    da[2] = (1/(m + lambda[2][2])) * (Fgy + Fdy + FloatageY); //vy'
+
+    Fdz = Plz_z + Plp_z;
+    Fgz = -cv1[2] * a[3] * fabs(a[3]) - cv2[2] * a[3];
+    FloatageZ = -cos(a[6]) * sin(a[5]) * delta_f;
+    //FloatageZ = 0; //обнуление остаточной плавучести
+    da[3] = (1/(m + lambda[3][3])) * (Fdz + Fgz + FloatageZ); //vz'
+
+    da[4] = -(1/cos(a[6]) * ((-a[18]) * cos(a[5]) - sin(a[5]) * a[19]));  //proizvodnaya kursa
+
+    da[5] = a[17] - tan(a[6]) * ((-a[18]) * cos(a[5]) - sin(a[5]) * a[19]);  //proizvodnaya krena
+
+    da[6] = a[19] * cos(a[5]) + sin(a[5]) * (-a[18]); //proizvodnaya differenta
+
+    da[7] = (1/Td) * (kd * (double)Ulz - Plz);  // лаговый задний
+
+    da[8] = (1/Td) * (kd * (double)Ulp - Plp); // лаговый передний
+
+    da[9] = (1/Td) * (kd * (double)Ugl - Pgl);  // глубина левый
+
+    da[10] = (1/Td) * (kd * (double)Ugp - Pgp);  // глубина правый
+
+    da[11] = 0;
+
+    da[12] = 0;
+
+    da[13] = 0;
+
+    double alfa[4][4]; //матрица перевода из связанной СК в глобальную СК
+    a[4] = -a[4];
+    alfa[1][1] = cos(a[4])*cos(a[6]);
+    alfa[2][1] = sin(a[6]);
+    alfa[3][1] = -sin(a[4])*cos(a[6]);
+    alfa[1][2] = sin(a[5])*sin(a[4])-cos(a[5])*cos(a[4])*sin(a[6]);
+    alfa[2][2] = cos(a[5])*cos(a[6]);
+    alfa[3][2] = sin(a[5])*cos(a[4])+cos(a[5])*sin(a[4])*sin(a[6]);
+    alfa[1][3] = cos(a[5])*sin(a[4])+sin(a[5])*cos(a[4])*sin(a[6]);
+    alfa[2][3] = -sin(a[5])*cos(a[6]);
+    alfa[3][3] = cos(a[5])*cos(a[4])-sin(a[4])*sin(a[5])*sin(a[6]);
+    a[4] = -a[4];
+
+    da[14] = alfa[1][1] * a[1] + alfa[1][2] * a[2] + alfa[1][3] * a[3];
+    //dx_global
+
+    da[15] = alfa[2][1] * a[1] + alfa[2][2] * a[2] + alfa[2][3] * a[3];
+    //dy_global
+
+    da[16] = alfa[3][1] * a[1] + alfa[3][2] * a[2] + alfa[3][3] * a[3];
+    //dz_global
+
+    double Fa = G + delta_f;
+    double Fax = sin(a[6])*Fa;
+    //float Fay = cos(a[5])*cos(a[6])*Fa;
+    double Faz = -sin(a[5])*cos(a[6])*Fa;
+
+    Mdx = k_gamma*(Pgl - Pgp);
+    Mgx = -cw1[0] * a[17] * fabs(a[17]) - cw2[0] * a[17];
+    Max = Faz*h;
+    //Max = 0; //obnulenie momenta ot sily Arhimeda
+    da[17] = (1/(J[0] + lambda[4][4])) * (Mdx + Mgx + Max);
+
+    X[105][0] = Plz_z;
+    X[106][0] = Plp_z;
+    X[107][0] = Pgl_y;
+    X[108][0] = Pgp_y;
+
+    Mdy = l2*(Plz_z - Plp_z);
+    Mgy = -cw1[1] * a[18] * fabs(a[18]) - cw2[1] * a[18];
+    da[18] = (1/(J[1] + lambda[5][5])) * (Mdy + Mgy);
+
+    Mdz = 0;
+    Mgz = -cw1[2] * a[19] * fabs(a[19]) - cw2[2] * a[19];
+    Maz = -h*Fax;
+    //Maz = 0; //obnulenie momenta ot sily Arhimeda
+    da[19] = (1/(J[2] + lambda[6][6])) * (Mdz + Mgz +Maz);
+
+    da[20] = a[1];
+    da[21] = a[2];
+    da[22] = a[3];
+}
+
+void SU_ROV::rungeKusto3(const float Ulz, const float Ulp, const float Ugl, const float Ugp, const float dt)
+{
+    const double Kc = 180/M_PI;
+    double a1[23], y[23];
+    int i;
+    const double H1 = dt;
+    const int n = ANPA_MOD_CNT;
+    modelKusto3(Ulz,Ulp,Ugl,Ugp);
+    for (i = 1; i < n; i++) {
+      a1[i] = a[i];
+      y[i] = da[i];
+      a[i] = a1[i] + 0.5 * H1 * da[i];
+    }
+    modelKusto3(Ulz,Ulp,Ugl,Ugp);
+    for (i = 1; i < n; i++)
+    {
+      y[i] = y[i]+ 2 * da[i];
+      a[i] = a1[i] + 0.5 * H1 * da[i];
+    }
+    modelKusto3(Ulz,Ulp,Ugl,Ugp);
+    for (i = 1; i < n; i++) {
+      y[i] = y[i] + 2 * da[i];
+      a[i] = a1[i] + H1 * da[i];
+    }
+    modelKusto3(Ulz,Ulp,Ugl,Ugp);
+    for (i = 1; i < n; i++) {
+      a[i] = a1[i] + (H1 / 6) * (y[i] + da[i]);
+    }
+
+    //данные в СУ ( с преобразованием координат)
+
+    x_global = a[14]; //koordinata apparata v globalnoi SK
+    y_global = a[15];  //otstojanie ot dna otnositelno repernoi tochki, kotoraja na dne
+    cur_depth = max_depth - y_global;  //tekush"aya glubina SPA
+    z_global = a[16]; //koordinaty apparata v globalnoi SK (преобразование координат)
+    Wx = a[17] * Kc; //uglovye skorosti SPA v svyazannyh osyah v gradus/sekunda
+    Wy = a[18] * Kc;
+    Wz = a[19] * Kc;
+
+    vx_local = a[1]; vy_local = a[2]; vz_local = a[3];  //lineinye skorosti SPA v svyazannyh osyah
+    vx_global = da[14]; vy_global = da[15]; vz_global = da[16];  // lineinye skorosti SPA v globalnyh osyah
+
+    Psi_g = a[4] * Kc; // ugol kursa (преобразование координат)
+    Gamma_g = a[5] * Kc; // ugol krena
+    Tetta_g = a[6] * Kc; // ugol differenta
+    W_Psi_g = da[4] * Kc; // proizvodnaya ugla kursa
+    W_Gamma_g = da[5] * Kc; // proizvodnaya ugla krena
+    W_Tetta_g = da[6] * Kc; // proizvodnaya ugla differenta
+}
+
+void SU_ROV::resetModel()
+{
+    for (int i=0;i<ANPA_MOD_CNT;i++) {a[i] = 0.0f; da[i]=0.0f;}
+}
+
+/*
 void SU_ROV::tick()
 {
     X[41][0]=K[41];     // задать курс
@@ -107,12 +363,6 @@ void SU_ROV::BFS_DRK(double Upsi, double Uteta, double Ugamma, double  Ux)
     X[28][0] = saturation(X[24][0], K[24])*K[28];
     X[29][0] = saturation(X[25][0], K[25])*K[29];
     X[30][0] = saturation(X[26][0], K[26])*K[30];
-}
-
-float SU_ROV::saturation(float input, float max) {
-    if (fabs(input)>= max)
-        return (sign(input)*max);
-    else return input;
 }
 
 void SU_ROV::model(const float Umvl, const float Umnl, const float Umvp, const float Umnp)
@@ -300,17 +550,4 @@ void SU_ROV::runge(const float Umvl, const float Umnl, const float Umvp, const f
     W_Tetta_g = da[6] * Kc; // proizvodnaya ugla differenta
 }
 
-void SU_ROV::resetModel()
-{
-    for (int i=0;i<ANPA_MOD_CNT;i++) {a[i] = 0.0f; da[i]=0.0f;}
-}
-
-
-
-
-
-
-
-
-
-
+*/

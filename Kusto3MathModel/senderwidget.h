@@ -43,6 +43,7 @@ class SenderWidget : public QWidget, Ui::SenderWidget {
 
 signals:
     void startPressed();
+    void againPressed();
     void stateChanged();
     void gateFinded();
     void gateNotFound();
