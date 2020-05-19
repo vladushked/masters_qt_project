@@ -34,14 +34,13 @@ void SU_ROV::tick()
 {
     // задающие сигналы по каналам
     X[41][0] = K[41];     // контур курса
-    X[61][0] = K[61];   // контур лага
-    X[81][0] = K[81];   // контур глубины
-
+    X[61][0] = K[61];   // контур глубины
+    X[81][0] = K[81];   // контур лага
     getDataFromModel();
     //qDebug() << X[41][0];
     yawControlChannel();
-    lagControlChannel();
     depthControlChannel();
+    lagControlChannel();
     //BFS_DRK_KUSTO_3(X[48][0],0,0);
     BFS_DRK_KUSTO_3(X[48][0],X[68][0],X[88][0]);
     rungeKusto3(X[27][0], X[28][0], X[29][0], X[30][0], 0.01);
@@ -74,7 +73,7 @@ void SU_ROV::yawControlChannel()
     //qDebug() << X[48][0];
 }
 
-void SU_ROV::lagControlChannel()
+void SU_ROV::depthControlChannel()
 {
     X[63][0] = X[61][0] - X[62][0];
     X[64][0] = X[63][0] * K[64];
@@ -83,7 +82,7 @@ void SU_ROV::lagControlChannel()
     X[68][0] = X[66][0];
 }
 
-void SU_ROV::depthControlChannel()
+void SU_ROV::lagControlChannel()
 {
     X[83][0] = X[81][0] - X[82][0];
     X[84][0] = X[83][0] * K[84];

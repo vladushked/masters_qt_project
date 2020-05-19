@@ -37,6 +37,7 @@ class SU_ROV : public QObject
 public:
     explicit SU_ROV(QObject *parent = nullptr);
     virtual ~SU_ROV() {};
+    void resetModel();
     QTimer timer;
 
 public slots:
@@ -54,25 +55,24 @@ private:
     int sign(float input){
         return (input>=0) ? 1 : -1;
     }
+    void getDataFromModel();
     void yawControlChannel();
-    void lagControlChannel();
     void depthControlChannel();
+    void lagControlChannel();
     // rov model init
     void modelKusto3(const float Ulz, const float Ulp, const float Ugl, const float Ugp);
     void rungeKusto3(const float Ulz, const float Ulp, const float Ugl, const float Ugp, const float dt);
-    void resetModel();
 
     double Plz,Plp,Pgl,Pgp; //упоры движителей
     double Pgl_y, Pgp_y, Plz_z, Plp_z; // проекции упоров
 
-    void getDataFromModel();
-    void pitchControlChannel();
+
+    //void pitchControlChannel();
     //void BFS_DRK(double Upsi, double Uteta, double Ugamma, double Ux);
     //метод, который ограничивает значение input по величине max
     // rov model init
-    void model(const float Umvl,const float Umnl,const float Umvp,const float Umnp);
-    void runge(const float Umvl,const float Umnl,
-               const float Umvp,const float Umnp, const float dt=0.01);
+    //void model(const float Umvl,const float Umnl,const float Umvp,const float Umnp);
+    //void runge(const float Umvl,const float Umnl,const float Umvp,const float Umnp, const float dt=0.01);
 
 
     double a[ANPA_MOD_CNT];

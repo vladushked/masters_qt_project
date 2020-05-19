@@ -89,6 +89,7 @@ private:
     //float initialYaw = 1.5708;
 
 private slots:
+    void resetSU();
     void send();
     void receive();
     void searchForGate();
@@ -98,5 +99,6 @@ private slots:
     void searchingMetod();
     void checkYaw();
     void swimmingMethod();
+    void checkGate();
 };
 #endif // SENDERWIDGET_H

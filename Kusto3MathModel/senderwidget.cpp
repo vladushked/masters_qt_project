@@ -76,6 +76,7 @@ SenderWidget::SenderWidget(QWidget *parent) : QWidget(parent) {
     swim->addTransition(this, SIGNAL(againPressed()), waitForCommand);
     centering->addTransition(this, SIGNAL(againPressed()), waitForCommand);
     // connnect some signals
+    connect(waitForCommand, SIGNAL(entered()), this, SLOT(resetSU()));
     connect(search, SIGNAL(entered()), this, SLOT(searchForGate()));
     connect(swim, SIGNAL(entered()), this, SLOT(swimToGate()));
     connect(centering, SIGNAL(entered()), this, SLOT(centeringOnGate()));
@@ -116,6 +117,15 @@ void SenderWidget::updateReceivedValues()
         emit gateFinded();
 }
 
+void SenderWidget::resetSU()
+{
+    // задающие сигналы по каналам
+    K[41] = 0;     // контур курса
+    K[61] = 0;   // контур глубины
+    K[81] = 0;   // контур лага
+    su.resetModel();
+}
+
 void SenderWidget::send()
 {
     updateSendValues();
@@ -137,7 +147,7 @@ void SenderWidget::receive()
 
     //qDebug() << "Data received";
     //updateReceivedValues();
-    // qDebug() << messageFromRos.isExist;
+    qDebug() << messageFromRos.isExist;
 
     // TODO: метод для выдачи сигнала о нахождении ворот после 10 обнаружений
 }
@@ -164,7 +174,7 @@ void SenderWidget::swimToGate()
 
 void SenderWidget::centeringOnGate()
 {
-
+    qDebug() << "centeringOnGate";
 }
 
 void SenderWidget::finishMission()
@@ -218,11 +228,23 @@ void SenderWidget::checkYaw()
 void SenderWidget::swimmingMethod()
 {
     txtBrFile->append("Движение по лагу к воротам.");
-    K[44] = 0;
-    K[43] = 1;
-    K[41] = 5;
+    K[84] = 0;
+    K[83] = 1;
+    K[81] = -5;
     //qDebug() << "swimmingMethod. lag to gateDirection";
     //lag to gateDirection
 }
+
+void SenderWidget::checkGate()
+{
+    if (!messageFromRos.isExist) {
+        QTimer::singleShot(1, this, SLOT(checkYaw()));
+    }
+    else {
+        emit startCentering();
+    }
+
+}
+
 
 
