@@ -59,6 +59,7 @@ public:
         state = st;
         txtBrFile->append(st);
     }
+    //QTimer timer_send;
 
 private:
     // udp
@@ -69,7 +70,6 @@ private:
     int QtSenderPort, QtReceiverPort, RosSenderPort, rosReceiverPort;//номера портов отправителя и получателя
     ToRos messageToRos;
     FromRos messageFromRos;
-
     // state machine
     QStateMachine stateMachine;
     QState *waitForCommand, *search, *swim, *centering;
@@ -77,6 +77,7 @@ private:
     QString state;
     bool gateFound;
     QString gateDirection;
+
 
     void updateSendValues();
     void updateReceivedValues();
@@ -100,5 +101,7 @@ private slots:
     void checkYaw();
     void swimmingMethod();
     void checkGate();
+    void centeringMetodLag();
+    void centeringMetodDepth();
 };
 #endif // SENDERWIDGET_H

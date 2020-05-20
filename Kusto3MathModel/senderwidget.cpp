@@ -52,10 +52,11 @@ SenderWidget::SenderWidget(QWidget *parent) : QWidget(parent) {
     qtSenderUdpSocket->bind(QtSenderIP, QtSenderPort);
     qtReceiverUdpSocket->bind(QtReceiverIP, QtReceiverPort);
     connect(qtReceiverUdpSocket, SIGNAL(readyRead()), this, SLOT(receive()));
-    connect(&su.timer, SIGNAL(timeout()), this, SLOT(send()));
+    //timer_send.start(100);
+    //connect(&timer_send, SIGNAL(timeout()), this, SLOT(send()));
     connectionEstablished = false;
+    send();
 
-    gateFound = false;
     gateDirection = "none";
 
     // state machine
@@ -101,11 +102,11 @@ void SenderWidget::updateSendValues()
 {
     messageToRos.angleYaw = 1.5708 + X[42][0];
     messageToRos.angularVelosityY = X[50][0];
-    messageToRos.poseY = 2.0 + X[62][0]; // глубина
+    messageToRos.poseY = 2.4 + X[62][0]; // глубина
     messageToRos.linearVelosityY = X[70][0];
     messageToRos.poseZ = 4.0 + X[82][0]; // лаг
     messageToRos.linearVelosityZ = X[90][0];
-
+    qDebug() << X[42][0];
     // qDebug() << messageToRos.angleYaw;
     // qDebug() << messageToRos.poseY;
     // qDebug() << messageToRos.poseZ;
@@ -120,14 +121,27 @@ void SenderWidget::updateReceivedValues()
 void SenderWidget::resetSU()
 {
     // задающие сигналы по каналам
+    K[44] = 1;
+    K[45] = 1;
+    K[43] = 0;
     K[41] = 0;     // контур курса
+    K[64] = 1;
+    K[65] = 1;
+    K[63] = 0;
     K[61] = 0;   // контур глубины
+    K[84] = 1;
+    K[85] = 1;
+    K[83] = 0;
     K[81] = 0;   // контур лага
+    messageFromRos.isExist = false;
     su.resetModel();
 }
 
 void SenderWidget::send()
 {
+    lblYaw->setText(QString("%1").arg(QString::number(X[42][0]*180/3.14, 'f', 1)));
+    lblGateIsExist->setText(messageFromRos.isExist ? "true" : "false");
+    QTimer::singleShot(100, this, SLOT(send()));
     updateSendValues();
     QByteArray baDatagram;
     qtSenderUdpSocket->writeDatagram((char*)&messageToRos, sizeof (messageToRos), rosReceiverIP, rosReceiverPort);
@@ -156,14 +170,13 @@ void SenderWidget::searchForGate()
 {
     K[44] = 0;
     K[43] = 1;
-    K[41] = 0.5;
-    gateDirection = "right";
-    QTimer::singleShot(1, this, SLOT(searchingMetod()));
+    K[41] = 0.2;
+    gateDirection = "left";
+    searchingMetod();
 }
 
 void SenderWidget::swimToGate()
 {
-    gateFound = true;
     // set yaw = 0
     txtBrFile->append("Обнуление курса.");
     K[44] = 3.5;
@@ -174,27 +187,36 @@ void SenderWidget::swimToGate()
 
 void SenderWidget::centeringOnGate()
 {
-    qDebug() << "centeringOnGate";
+    K[64] = 0;
+    K[65] = 0;
+    K[63] = 0.005;
+    K[61] = 0;
+
+    K[84] = 0;
+    K[85] = 0;
+    K[83] = 0.005;
+    K[81] = 0;
+    centeringMetodLag();
+    centeringMetodDepth();
 }
 
 void SenderWidget::finishMission()
 {
     txtBrFile->append("Centering done. Mission complete!");
     stateMachine.stop();
-
 }
 
 void SenderWidget::searchingMetod()
 {
-    if (!gateFound){
-        if (gateDirection == "right") {
+    if (!messageFromRos.isExist){
+        if (gateDirection == "left") {
             if (X[42][0] >= 1){
-                K[41] = -0.5;
-                gateDirection = "left";
+                K[41] = -0.2;
+                gateDirection = "right";
             }
             QTimer::singleShot(1, this, SLOT(searchingMetod()));
         }
-        else if (gateDirection == "left") {
+        else if (gateDirection == "right") {
             if (X[42][0] <= -1) {
                 K[44] = 1;
                 K[43] = 0;
@@ -209,7 +231,7 @@ void SenderWidget::searchingMetod()
             emit gateNotFound();
         }
     }
-    if (X[42][0] <= -0.5)
+    else
         emit gateFinded();
 }
 
@@ -219,31 +241,60 @@ void SenderWidget::checkYaw()
         QTimer::singleShot(1, this, SLOT(checkYaw()));
     }
     else {
-        gateFound = false;
-        swimmingMethod();
+        messageFromRos.isExist = false;
+        QTimer::singleShot(20000, this, SLOT(swimmingMethod()));
+
     }
 
 }
 
 void SenderWidget::swimmingMethod()
 {
-    txtBrFile->append("Движение по лагу к воротам.");
-    K[84] = 0;
-    K[83] = 1;
-    K[81] = -5;
-    //qDebug() << "swimmingMethod. lag to gateDirection";
-    //lag to gateDirection
+    messageFromRos.isExist = false;
+    if (gateDirection == "right"){
+        txtBrFile->append("Движение по лагу к воротам. right");
+        K[84] = 0;
+        K[83] = 1;
+        K[81] = 4;
+        checkGate();
+    }
+    else if (gateDirection == "left"){
+        txtBrFile->append("Движение по лагу к воротам. left");
+        K[84] = 0;
+        K[83] = 1;
+        K[81] = -4;
+        checkGate();
+    }
 }
 
 void SenderWidget::checkGate()
 {
-    if (!messageFromRos.isExist) {
-        QTimer::singleShot(1, this, SLOT(checkYaw()));
+    if (!messageFromRos.isExist)
+        QTimer::singleShot(1, this, SLOT(checkGate()));
+    else
+        emit startCentering();
+}
+
+void SenderWidget::centeringMetodLag()
+{
+    if ((messageFromRos.x_center < 300) or (messageFromRos.x_center > 340)){
+        K[81] = messageFromRos.x_center - 320;
+        QTimer::singleShot(1, this, SLOT(centeringMetodLag()));
     }
     else {
-        emit startCentering();
+        K[81] = 0;
     }
+}
 
+void SenderWidget::centeringMetodDepth()
+{
+    if ((messageFromRos.y_center < 220) or (messageFromRos.y_center > 260)){
+        K[61] = -(messageFromRos.y_center - 240);
+        QTimer::singleShot(1, this, SLOT(centeringMetodDepth()));
+    }
+    else {
+        K[61] = 0;
+    }
 }
 
 
