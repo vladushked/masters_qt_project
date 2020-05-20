@@ -103,5 +103,6 @@ private slots:
     void checkGate();
     void centeringMetodLag();
     void centeringMetodDepth();
+    void centeringCheck();
 };
 #endif // SENDERWIDGET_H

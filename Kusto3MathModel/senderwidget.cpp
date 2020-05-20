@@ -283,6 +283,7 @@ void SenderWidget::centeringMetodLag()
     }
     else {
         K[81] = 0;
+        centeringCheck();
     }
 }
 
@@ -294,7 +295,14 @@ void SenderWidget::centeringMetodDepth()
     }
     else {
         K[61] = 0;
+        centeringCheck();
     }
+}
+
+void SenderWidget::centeringCheck()
+{
+    if ((K[81] == 0)&(K[61] == 0))
+        emit centeringDone();
 }
 
 
